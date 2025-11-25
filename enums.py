@@ -18,7 +18,7 @@ class SigText(Enum):
     PK_03_04 = "zip"
     RBXM = "rbxm"
     RBXL = "rbxl"
-    Other = "other"
+    other = "other"
 
 class FileSig(Enum):
     ogg      = b"OggS"
@@ -58,5 +58,5 @@ broad = {
     SigText.PK_03_04: "archive",
     SigText.RBXM: "model",
     SigText.RBXL: "model",
-    SigText.Other: "other"
+    SigText.other: "other"
 }

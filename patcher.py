@@ -2,6 +2,7 @@ import array
 import os
 import pickle
 from enums import broad, SigText, FileSig
+from get import get
 
 loco = os.getcwd()
 
@@ -44,7 +45,8 @@ def dump(file):
     data = exatract(file)[1]
     name = f'[{file.folder}]{file.hash}'
     filename = name+"."+str(SigText[file.type.name].value)
-    path = os.path.join(os.getcwd(),broad[file.type.name],filename)
+    path = os.path.join(os.getcwd(),"dumps",broad[file.type],filename)
+    print(f"[+] Dumping File:{filename} @{path}")
     write(path, data)
 
 def dumpAll():
@@ -52,12 +54,40 @@ def dumpAll():
     for file in cache_files:
         dump(file)
 
+def patch(file):
+    file = os.path.join(cache,file.folder,file.hash)
+    write(file,file.content)
+
+def parseDumpName(name):
+    # parse the data out of the file & the name
+    folder = name[name.find("[")+1:name.find("]")]
+    hash = name[name.find("]")+1:name.find(".")]
+    ext = name[name.find(".")+1:len(name)]
+    return folder, hash, ext
+
+def loadDumps():
+    # take dumps files from folder
+    # turn into roblox cache file
+    # reload & save to disk
+    cache_files = []
+    os.remove("cache.pkl")
+    folders_path = os.path.join(os.getcwd(),"dumps")
+    folders = os.listdir(folders_path)
+    for folder in folders:
+        files = os.listdir(os.path.join(folders_path,folder))
+        for file in files:
+            file_path = os.path.join(folders_path,folder,file)
+            rblx_folder, hash, ext = parseDumpName(file)
+            content = open(file_path,'rb').read()
+            print(f"[+] Loading file from dump folder:{rblx_folder} hash:{hash} ext:{ext}")
+            cache_files.append(cacheT(folder,hash,content))
+
 def getType(data: bytes):
     for sig in SigText:
         if sig.name.encode('utf-8', 'ignore') in data:
             return sig
     
-    return SigText.Other
+    return SigText.other
 
 def exatract(file):
     # takes all of the file in bytes, and gets real file (remove roblox metadata)
@@ -81,7 +111,7 @@ def load(folder_name, file_name):
     cache_files.append(cacheT(folder_name,file_name,bytes))
     print(f"[+] File:{file_name} folder:{folder_name} type:{type[0]} sig:{type}")
 
-def init():
+def loadFiles():
     global list_of_folders_in_cache, cache
     for folder_name in list_of_folders_in_cache:
         folder_path = os.path.join(cache, folder_name)
@@ -94,27 +124,49 @@ def find(hash) -> cacheT | str:
             return file
     return 'not found'
 
-if os.path.exists("cache.pkl"):
-    # dose exist
-    print("[+] Loading cache files from memmory")
-    cache_files = pickle.load(open("cache.pkl", 'rb'))
-else:
-    init()
-    print("[+] Dumping cache files to disk")
-    pickle.dump(cache_files,open("cache.pkl",'wb'))
+def init():
+    global cache_files
+    if os.path.exists("cache.pkl"):
+        # dose exist
+        print("[+] Loading cache files from memmory")
+        cache_files = pickle.load(open("cache.pkl", 'rb'))
+    else:
+        loadFiles()
+        print("[+] Dumping cache files to disk")
+        pickle.dump(cache_files,open("cache.pkl",'wb'))
 
 if __name__ == "__main__":
+    init()
     while True:
         os.system("cls")
-        print("""\n
-1. dump all  4. exit
-2. re-fetch  5. patch
-3. re-load
+        print(f"""\n
+# of folders:{len(list_of_folders_in_cache)} @{cache} \n# of cache:{len(cache_files)}
+
+1. dump all cache              4. exit
+2. download cache from roblox  5. patch cache (from dump)
+3. reload & save cache to disk 6. update from dumps (before patching)
         """)
-        prompt = input("option > ")
+        # simple CLI
+        try:
+            prompt = int(input("option > "))
+        except:
+            prompt = "a" # make it a str so it will go back to defualt
+
         match prompt:
-            case "1":
-                print('fuckyou')
-            case "4":
+            case 1:
+                dumpAll()
+            case 2:
+                get()
+            case 3:
+                os.remove("cache.pkl")
+                init()
+            case 4:
                 exit(0)
+            case 6:
+                loadDumps()
+            case _:
+                print("[-] Invalid Input")
         os.system("pause")
+    else:
+        # called from other file
+        init()
