@@ -1,5 +1,6 @@
 import array
 import os
+import pickle
 from enums import broad, SigText, FileSig
 
 loco = os.getcwd()
@@ -11,7 +12,7 @@ cache_loco = "cache"
 cache = os.path.join(loco,cache_loco)
 list_of_folders_in_cache = os.listdir(cache)
 
-cache_files = [] # loaded into memmory, contains cache cacheT
+cache_files = []
 
 print(f"[+] Starting with cache:{cache_loco} #folders:{len(list_of_folders_in_cache)}")
 
@@ -92,3 +93,28 @@ def find(hash) -> cacheT | str:
         if file.hash == hash:
             return file
     return 'not found'
+
+if os.path.exists("cache.pkl"):
+    # dose exist
+    print("[+] Loading cache files from memmory")
+    cache_files = pickle.load(open("cache.pkl", 'rb'))
+else:
+    init()
+    print("[+] Dumping cache files to disk")
+    pickle.dump(cache_files,open("cache.pkl",'wb'))
+
+if __name__ == "__main__":
+    while True:
+        os.system("cls")
+        print("""\n
+1. dump all  4. exit
+2. re-fetch  5. patch
+3. re-load
+        """)
+        prompt = input("option > ")
+        match prompt:
+            case "1":
+                print('fuckyou')
+            case "4":
+                exit(0)
+        os.system("pause")
