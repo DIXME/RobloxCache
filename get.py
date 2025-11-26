@@ -2,7 +2,11 @@
 # from normal roblox
 import os
 
+copy = os.path.join(os.getcwd(),"cache")
+folders = os.path.join(os.getenv("LOCALAPPDATA"), "Roblox","rbx-storage")
+
 def get():
+    global copy, folders
     # can change path here
     # has to use rbx-storage folder!
     copy = os.path.join(os.getcwd(),"cache")

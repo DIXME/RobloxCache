@@ -2,7 +2,7 @@ import array
 import os
 import pickle
 from enums import broad, SigText, FileSig
-from get import get
+from get import get, folders
 
 loco = os.getcwd()
 
@@ -24,39 +24,43 @@ def write(path, bytes):
         f.close()
 
 class cacheT:
-    def __init__(self, folder, hash, content):
+    def __init__(self, folder, hash):
         self.folder = folder
         self.hash = hash
-        self.content = content
         self.type = getType(content[:80])
     
     def save(self):
-        global cache
-        write(os.path.join(cache, self.folder,self.hash),self.content)
+        # bytes are being written but the value is not saving
+        # whyyyyy
+        data = exatract(self)
+        path = os.path.join(folders,self.folder,self.hash)
+        try:
+            old = exatract(cacheT(self.folder,self.hash))
+        except:
+            print("[-] File removed from roblox cache!")
+            return
+        content = data[0] + data[1]
+        if old != content:
+            print(f"[+] Patching [{self.folder}] [{self.hash}] [{self.type.name}]")
+            write(os.path.join(folders,self.folder,self.hash), content)
 
 def view(file):
-    data = exatract(file)[1]
     filename = "temp."+str(SigText[file.type.name].value)
     path = os.path.join(os.getcwd(),filename)
-    write(path, data)
+    write(path, file.exa[1])
     os.startfile(path)
 
 def dump(file):
-    data = exatract(file)[1]
     name = f'[{file.folder}]{file.hash}'
     filename = name+"."+str(SigText[file.type.name].value)
     path = os.path.join(os.getcwd(),"dumps",broad[file.type],filename)
     print(f"[+] Dumping File:{filename} @{path}")
-    write(path, data)
+    write(path, exatract(file)[1])
 
 def dumpAll():
     global cache_files
     for file in cache_files:
         dump(file)
-
-def patch(file):
-    file = os.path.join(cache,file.folder,file.hash)
-    write(file,file.content)
 
 def parseDumpName(name):
     # parse the data out of the file & the name
@@ -69,20 +73,37 @@ def loadDumps():
     # take dumps files from folder
     # turn into roblox cache file
     # reload & save to disk
-    cache_files = []
-    os.remove("cache.pkl")
     folders_path = os.path.join(os.getcwd(),"dumps")
     folders = os.listdir(folders_path)
+    changes = 0
     for folder in folders:
         files = os.listdir(os.path.join(folders_path,folder))
         for file in files:
             file_path = os.path.join(folders_path,folder,file)
             rblx_folder, hash, ext = parseDumpName(file)
             content = open(file_path,'rb').read()
-            print(f"[+] Loading file from dump folder:{rblx_folder} hash:{hash} ext:{ext}")
-            cache_files.append(cacheT(folder,hash,content))
+            fileT = find(hash)
+            try:
+                data = exatract(fileT)
+                if data[1] != content:
+                    changes+=1
+                    data[1] = content
+                    print(f"[+] Updating file from dump folder:{rblx_folder} hash:{hash} ext:{ext}")
+            except Exception as e:
+                print("[-] File not found!",e)
+                
+    if changes >= 1:
+        saveToDisk()
+   
 
-def getType(data: bytes):
+def patch():
+    # take loaded files in cache_files
+    # and write them to roblox cache folder
+    # will it work?
+    for file in cache_files:
+        file.save()
+
+def getType(data: bytes) -> SigText:
     for sig in SigText:
         if sig.name.encode('utf-8', 'ignore') in data:
             return sig
@@ -108,8 +129,9 @@ def load(folder_name, file_name):
     tail = bytes[len(bytes)-8:]
     type = broad[getType(head)]
     
-    cache_files.append(cacheT(folder_name,file_name,bytes))
-    print(f"[+] File:{file_name} folder:{folder_name} type:{type[0]} sig:{type}")
+    cache_files.append(cacheT(folder_name,file_name))
+    file = cache_files[len(cache_files)-1]
+    print(f"[+] Loading File [{file.folder}] [{file.hash}] [{file.type}]")
 
 def loadFiles():
     global list_of_folders_in_cache, cache
@@ -124,16 +146,25 @@ def find(hash) -> cacheT | str:
             return file
     return 'not found'
 
+def saveToDisk():
+    print("[+] Dumping cache files to disk")
+    pickle.dump(cache_files,open("cache.pkl",'wb'))
+
 def init():
     global cache_files
     if os.path.exists("cache.pkl"):
         # dose exist
         print("[+] Loading cache files from memmory")
-        cache_files = pickle.load(open("cache.pkl", 'rb'))
+        try:
+            cache_files = pickle.load(open("cache.pkl", 'rb'))
+        except:
+            print("[-] Failed to load pkl file, remaking!")
+            loadFiles()
+            saveToDisk()
     else:
         loadFiles()
-        print("[+] Dumping cache files to disk")
-        pickle.dump(cache_files,open("cache.pkl",'wb'))
+        saveToDisk()
+        
 
 if __name__ == "__main__":
     init()
@@ -162,6 +193,8 @@ if __name__ == "__main__":
                 init()
             case 4:
                 exit(0)
+            case 5:
+                patch()
             case 6:
                 loadDumps()
             case _:
